@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kaleido — one AI, three lenses</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1B1E24; --paper:#F3EFE6; --paper-dim:#E9E3D6; --line: rgba(27,30,36,0.12);
+    --support:#2F7A6E; --support-ink:#12332E;
+    --assistant:#5B54C4; --assistant-ink:#252163;
+    --fun:#E2963A; --fun-ink:#5C3A0C;
+    --accent: var(--support); --accent-ink: var(--support-ink);
+    font-family: 'Inter', sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--ink);color:var(--paper);}
+  body{min-height:100vh;display:flex;flex-direction:column;}
+  .topbar{ height:5px;width:100%;
+    background: linear-gradient(90deg, var(--support), var(--support) 33.33%, var(--assistant) 33.33%, var(--assistant) 66.66%, var(--fun) 66.66%);
+    position:relative; }
+  .topbar::after{ content:""; position:absolute; top:0; left:0; height:100%; width:33.33%;
+    background: var(--accent); transition: left 0.5s cubic-bezier(.65,0,.35,1); }
+  body[data-mode="assistant"] .topbar::after{ left:33.33%; }
+  body[data-mode="fun"] .topbar::after{ left:66.66%; }
+  header{ padding:2rem 3rem 1rem; border-bottom:1px solid rgba(243,239,230,0.1); }
+  .eyebrow{ font-family:'JetBrains Mono', monospace; font-size:12px; letter-spacing:0.08em; text-transform:uppercase;
+    color: var(--accent); margin:0 0 0.4rem; }
+  h1{ font-family:'Fraunces', serif; font-weight:500; font-size:clamp(26px,4vw,36px); margin:0 0 0.4rem; letter-spacing:-0.01em; }
+  .sub{ color: rgba(243,239,230,0.55); font-size:14px; max-width:520px; margin:0; }
+
+  .key-bar{
+    display:flex; gap:10px; align-items:center; padding:12px 3rem; background: rgba(243,239,230,0.04);
+    border-bottom: 1px solid rgba(243,239,230,0.08); flex-wrap:wrap;
+  }
+  .key-bar input{
+    flex:1; min-width:220px; padding:9px 12px; border-radius:8px; border:1px solid rgba(243,239,230,0.2);
+    background: rgba(243,239,230,0.06); color: var(--paper); font-family:'JetBrains Mono', monospace; font-size:12.5px;
+  }
+  .key-bar input::placeholder{ color: rgba(243,239,230,0.35); }
+  .key-bar button{
+    border:none; border-radius:8px; padding:9px 16px; background: var(--paper); color: var(--ink);
+    font-weight:600; font-size:13px; cursor:pointer;
+  }
+  .key-note{ font-size:11.5px; color: rgba(243,239,230,0.4); width:100%; margin-top:2px; }
+  .key-status{ font-family:'JetBrains Mono', monospace; font-size:11px; padding:4px 10px; border-radius:20px; }
+  .key-status.set{ background: color-mix(in srgb, var(--accent) 25%, transparent); color:#9FE1CB; }
+  .key-status.unset{ background: rgba(226,74,74,0.15); color:#F09595; }
+
+  main{ flex:1; display:flex; max-width:1100px; width:100%; margin:0 auto; padding:2rem 3rem 3rem; gap:2.5rem; }
+  .lenses{ width:220px; flex-shrink:0; display:flex; flex-direction:column; gap:10px; }
+  .lens-btn{ text-align:left; padding:14px 16px; border-radius:10px; background: rgba(243,239,230,0.04);
+    border:1px solid rgba(243,239,230,0.1); color: var(--paper); cursor:pointer; transition: all 0.25s ease; font-family:'Inter',sans-serif; }
+  .lens-btn .name{ font-family:'Fraunces', serif; font-size:16px; font-weight:500; display:block; margin-bottom:2px; }
+  .lens-btn .desc{ font-size:12.5px; color:rgba(243,239,230,0.5); display:block; }
+  .lens-btn[data-active="true"]{ border-color: var(--accent); background: rgba(243,239,230,0.08); }
+  .lens-btn[data-active="true"] .name{ color: var(--accent); }
+  .swatch{ display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:8px; vertical-align:middle; }
+
+  .chat-panel{ flex:1; display:flex; flex-direction:column; background: var(--paper); border-radius:16px; overflow:hidden; min-height:480px; }
+  .chat-head{ padding:16px 20px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; }
+  .chat-head .who{ font-family:'Fraunces', serif; font-size:15px; color:var(--ink); font-weight:500; }
+  .chat-head .status{ font-size:11.5px; font-family:'JetBrains Mono', monospace; color: var(--accent-ink);
+    background: color-mix(in srgb, var(--accent) 18%, white); padding:3px 9px; border-radius:20px; }
+
+  .messages{ flex:1; padding:20px; overflow-y:auto; display:flex; flex-direction:column; gap:14px; color:var(--ink); }
+  .msg-wrap{ display:flex; flex-direction:column; max-width:78%; }
+  .msg-wrap.user{ align-self:flex-end; align-items:flex-end; }
+  .msg-wrap.bot{ align-self:flex-start; align-items:flex-start; }
+  .model-tag{ font-family:'JetBrains Mono', monospace; font-size:10.5px; color: rgba(27,30,36,0.4); margin-bottom:3px; }
+  .msg{ padding:11px 15px; border-radius:14px; font-size:14.5px; line-height:1.55; }
+  .msg.user{ background:var(--ink); color:var(--paper); border-bottom-right-radius:4px; }
+  .msg.bot{ background:var(--paper-dim); border-bottom-left-radius:4px; }
+  .msg.typing{ color: rgba(27,30,36,0.4); font-style:italic; }
+
+  .composer{ display:flex; gap:10px; padding:16px 20px; border-top:1px solid var(--line); }
+  .composer input{ flex:1; border:1px solid var(--line); border-radius:10px; padding:11px 14px; font-family:'Inter',sans-serif; font-size:14px; background:white; color:var(--ink); }
+  .composer input:focus{ outline:none; border-color:var(--accent); }
+  .composer button{ border:none; border-radius:10px; padding:0 20px; background:var(--accent); color:white; font-family:'Inter',sans-serif; font-weight:600; font-size:14px; cursor:pointer; }
+  .composer button:disabled{ opacity:0.5; cursor:default; }
+
+  footer{ text-align:center; padding:1.2rem; font-size:12px; color:rgba(243,239,230,0.35); font-family:'JetBrains Mono', monospace; }
+
+  @media (max-width: 760px){
+    main{ flex-direction:column; padding:1.5rem; }
+    .lenses{ width:100%; flex-direction:row; overflow-x:auto; }
+    header{ padding:1.5rem; }
+    .key-bar{ padding:12px 1.5rem; }
+  }
+</style>
+</head>
+<body data-mode="support">
+
+<div class="topbar"></div>
+
+<header>
+  <p class="eyebrow" id="eyebrow">Support lens</p>
+  <h1>Kaleido</h1>
+  <p class="sub">One assistant, three ways of showing up. Switch lenses on the left, then chat — replies come straight from the Claude API using your own key.</p>
+</header>
+
+<div class="key-bar">
+  <input type="password" id="apiKey" placeholder="sk-ant-... (your Anthropic API key)">
+  <button id="saveKey">Use this key</button>
+  <span class="key-status unset" id="keyStatus">no key set</span>
+  <span class="key-note">Your key stays in this browser tab only — it's never saved to disk and is sent directly to Anthropic's API. Get one at console.anthropic.com. Close this tab and the key is gone.</span>
+</div>
+
+<main>
+  <div class="lenses">
+    <button class="lens-btn" data-active="true" data-mode="support" onclick="setMode('support')">
+      <span class="name"><span class="swatch" style="background:#2F7A6E"></span>Support</span>
+      <span class="desc">Patient, precise, solves the problem</span>
+    </button>
+    <button class="lens-btn" data-mode="assistant" onclick="setMode('assistant')">
+      <span class="name"><span class="swatch" style="background:#5B54C4"></span>Assistant</span>
+      <span class="desc">Clear-headed help with anything</span>
+    </button>
+    <button class="lens-btn" data-mode="fun" onclick="setMode('fun')">
+      <span class="name"><span class="swatch" style="background:#E2963A"></span>Companion</span>
+      <span class="desc">Playful, warm, up for a tangent</span>
+    </button>
+  </div>
+
+  <div class="chat-panel">
+    <div class="chat-head">
+      <span class="who" id="who">Support</span>
+      <span class="status" id="status">ready</span>
+    </div>
+    <div class="messages" id="messages"></div>
+    <div class="composer">
+      <input type="text" id="input" placeholder="Type a message…" onkeydown="if(event.key==='Enter')send()">
+      <button id="sendBtn" onclick="send()">Send</button>
+    </div>
+  </div>
+</main>
+
+<footer>kaleido · claude-sonnet-4-6 · bring your own key</footer>
+
+<script>
+const MODEL = "claude-sonnet-4-6";
+const personas = {
+  support: { label:"Support", eyebrow:"Support lens",
+    greeting:"Hi — tell me what's not working and I'll help you sort it out.",
+    system:"You are a customer support agent. Be calm, precise, and solution-focused. Ask a clarifying question if needed, then give clear step-by-step help. Keep replies short and practical." },
+  assistant: { label:"Assistant", eyebrow:"Assistant lens",
+    greeting:"Hey, what are you working on? I can help with writing, planning, questions, whatever's useful.",
+    system:"You are a clear-headed general-purpose assistant. Be helpful, direct, and thorough but concise. Adapt to whatever the user needs." },
+  fun: { label:"Companion", eyebrow:"Companion lens",
+    greeting:"Heyy! What's on your mind today? Happy to chat about anything.",
+    system:"You are a warm, playful companion. Be conversational, a little witty, curious about the person, and easy to talk to. Keep it light unless the topic turns serious, then be genuinely caring." }
+};
+
+let currentMode = "support";
+let history = [];
+let apiKey = "";
+
+function syncKey(){
+  const val = document.getElementById('apiKey').value.trim();
+  const statusEl = document.getElementById('keyStatus');
+  apiKey = val;
+  if(val){
+    statusEl.textContent = 'key set';
+    statusEl.className = 'key-status set';
+  } else {
+    statusEl.textContent = 'no key set';
+    statusEl.className = 'key-status unset';
+  }
+}
+document.getElementById('apiKey').addEventListener('input', syncKey);
+document.getElementById('apiKey').addEventListener('keydown', e=>{ if(e.key === 'Enter') syncKey(); });
+document.getElementById('saveKey').addEventListener('click', syncKey);
+
+function setMode(mode){
+  currentMode = mode;
+  document.body.setAttribute('data-mode', mode);
+  document.querySelectorAll('.lens-btn').forEach(b=>{
+    b.setAttribute('data-active', b.dataset.mode === mode ? 'true' : 'false');
+  });
+  const p = personas[mode];
+  document.getElementById('eyebrow').textContent = p.eyebrow;
+  document.getElementById('who').textContent = p.label;
+  const cs = getComputedStyle(document.body);
+  document.documentElement.style.setProperty('--accent', cs.getPropertyValue(mode === 'support' ? '--support' : mode === 'assistant' ? '--assistant' : '--fun'));
+  document.documentElement.style.setProperty('--accent-ink', cs.getPropertyValue(mode === 'support' ? '--support-ink' : mode === 'assistant' ? '--assistant-ink' : '--fun-ink'));
+  history = [];
+  document.getElementById('messages').innerHTML = '';
+  addMsg('bot', p.greeting);
+}
+
+function addMsg(role, text, modelName){
+  const msgs = document.getElementById('messages');
+  const wrap = document.createElement('div');
+  wrap.className = 'msg-wrap ' + role;
+  if(role === 'bot'){
+    const tag = document.createElement('span');
+    tag.className = 'model-tag';
+    tag.textContent = modelName || MODEL;
+    wrap.appendChild(tag);
+  }
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+  div.textContent = text;
+  wrap.appendChild(div);
+  msgs.appendChild(wrap);
+  msgs.scrollTop = msgs.scrollHeight;
+  return wrap;
+}
+
+async function send(){
+  const input = document.getElementById('input');
+  const text = input.value.trim();
+  if(!text) return;
+  const liveKey = document.getElementById('apiKey').value.trim();
+  if(liveKey) apiKey = liveKey;
+  if(!apiKey){
+    addMsg('bot', "Add your Anthropic API key above first — paste it into the field at the top of the page.");
+    return;
+  }
+  const btn = document.getElementById('sendBtn');
+  const status = document.getElementById('status');
+  addMsg('user', text);
+  history.push({role:'user', content: text});
+  input.value = '';
+  btn.disabled = true;
+  status.textContent = 'thinking';
+  const typingEl = addMsg('bot', 'typing…');
+  typingEl.querySelector('.msg').classList.add('typing');
+
+  try{
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true"
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: 1000,
+        system: personas[currentMode].system,
+        messages: history
+      })
+    });
+    const data = await response.json();
+    if(data.error){
+      throw new Error(data.error.message || 'API error');
+    }
+    const reply = (data.content || []).map(b => b.text || '').join('\n').trim() || "No response text came back.";
+    typingEl.remove();
+    addMsg('bot', reply, data.model || MODEL);
+    history.push({role:'assistant', content: reply});
+  }catch(e){
+    typingEl.remove();
+    addMsg('bot', "Couldn't reach the model: " + e.message);
+  }finally{
+    btn.disabled = false;
+    status.textContent = 'ready';
+  }
+}
+
+setMode('support');
+</script>
+
+</body>
+</html>
